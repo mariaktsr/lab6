@@ -13,7 +13,6 @@ public class CommandHandler {
     private final CommandInvoker invoker;
     private final FileManager fileManager;
 
-    //Создаёт обработчик команд
     public CommandHandler(CollectionManager collectionManager, FileManager fileManager) {
         this.fileManager = fileManager;
         this.invoker = CommandFactory.createInvoker(collectionManager, fileManager);
@@ -23,12 +22,10 @@ public class CommandHandler {
     public Response handle(Request request, boolean isFromServerConsole) {
         CommandType type = request.getCommandType();
 
-        // Защита серверных команд (клиент не может их вызвать)
         if (type.isServerOnly() && !isFromServerConsole) {
             return Response.error("Команда '" + type + "' доступна только на сервере");
         }
 
-        // Выполнение команды через инвокер
         return invoker.execute(request);
     }
 }

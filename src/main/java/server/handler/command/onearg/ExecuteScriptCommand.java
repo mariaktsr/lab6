@@ -4,11 +4,9 @@ import common.request.Request;
 import common.response.Response;
 import server.handler.command.Command;
 
-/**
- * Команда выполнения скрипта.
- * ⚠️ На сервере не выполняется, так как требует интерактивного ввода данных.
- * Клиент должен обрабатывать эту команду самостоятельно.
- */
+//Команда выполнения скрипта
+//(на сервере не выполняется, так как требует интерактивного ввода данных)
+
 public class ExecuteScriptCommand implements Command {
 
     @Override

@@ -71,7 +71,6 @@ public class FileManager {
     public void save(Stack<HumanBeing> collection) throws IOException {
         File file = new File(fileName);
 
-        // Проверка прав на запись
         if (file.exists() && !file.canWrite()) {
             throw new IOException("Нет прав на запись в файл: " + fileName);
         }
@@ -93,7 +92,7 @@ public class FileManager {
         }
     }
 
-    //Сохраняет коллекцию в файл
+    //Парсит одну CSV-строку в объект HumanBeing
     private HumanBeing parseCsvLine(String line) {
         String[] parts = line.split(DELIMITER, -1);
 
@@ -128,7 +127,7 @@ public class FileManager {
         }
     }
 
-    //Парсит CSV строку в объект HumanBeing
+    //Преобразует объект HumanBeing в CSV-строку
     private String toCsvLine(HumanBeing human) {
         StringBuilder sb = new StringBuilder();
 

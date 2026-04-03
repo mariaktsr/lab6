@@ -6,9 +6,8 @@ import server.handler.CollectionManager;
 import server.handler.command.Command;
 import java.util.List;
 
-/**
- * Команда фильтрации элементов по подстроке в имени.
- */
+//Команда фильтрации элементов по подстроке в имени.
+
 public class FilterContainsNameCommand implements Command {
 
     private final CollectionManager collectionManager;
@@ -32,7 +31,6 @@ public class FilterContainsNameCommand implements Command {
             return Response.success("Элементы с именем, содержащим '" + substring + "', не найдены");
         }
 
-        // Форматируем вывод
         String output = result.stream()
                 .map(common.model.HumanBeing::toString)
                 .collect(java.util.stream.Collectors.joining("\n"));

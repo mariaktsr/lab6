@@ -11,7 +11,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 //Модуль приёма подключений клиентов
-//Использует неблокирующий режим через Selector и ServerSocketChannel.
+//(использует неблокирующий режим через Selector и ServerSocketChannel)
 
 public class ConnectionAcceptor {
 

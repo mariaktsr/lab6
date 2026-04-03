@@ -118,6 +118,7 @@ public class CollectionManager {
         }
 
         return collection.stream()
+                .sorted(Comparator.comparing(HumanBeing::getName))
                 .map(HumanBeing::toString)
                 .collect(Collectors.joining("\n"));
     }
@@ -146,6 +147,7 @@ public class CollectionManager {
     public List<HumanBeing> filterContainsName(String substring) {
         return collection.stream()
                 .filter(h -> h.getName().contains(substring))
+                .sorted(Comparator.comparing(HumanBeing::getName))
                 .collect(Collectors.toList());
     }
 

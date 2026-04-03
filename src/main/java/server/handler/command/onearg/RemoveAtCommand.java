@@ -4,9 +4,8 @@ import common.request.Request;
 import common.response.Response;
 import server.handler.CollectionManager;
 
-/**
- * Команда удаления элемента по индексу.
- */
+//Команда удаления элемента по индексу
+
 public class RemoveAtCommand implements Command {
 
     private final CollectionManager collectionManager;

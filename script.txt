@@ -1,4 +1,3 @@
 add
 show
-update 1
-save
+update 2
