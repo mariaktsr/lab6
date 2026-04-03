@@ -29,6 +29,14 @@ public class ServerConsole implements Runnable {
         while (running) {
             try {
                 System.out.print("\nserver> ");
+
+                if (!scanner.hasNextLine()) {
+                    System.out.println("\nВвод завершён. Завершение сервера...");
+                    stop();
+                    System.exit(0);
+                    return;
+                }
+
                 String line = scanner.nextLine().trim();
 
                 if (line.isEmpty()) {
@@ -55,7 +63,11 @@ public class ServerConsole implements Runnable {
                     System.err.println("Неизвестная команда: " + line);
                     System.err.println("Доступно: save, exit");
                 }
-
+            } catch (java.util.NoSuchElementException e) {
+                System.out.println("\nВвод завершён. Завершение сервера...");
+                stop();
+                System.exit(0);
+                return;
             } catch (Exception e) {
                 System.err.println("Ошибка: " + e.getMessage());
             }

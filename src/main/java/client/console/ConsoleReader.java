@@ -25,6 +25,12 @@ public class ConsoleReader {
     //Считывает команду от пользователя
     public Request readCommand() {
         System.out.print("\n> ");
+
+        if (!scanner.hasNextLine()) {
+            System.out.println("\nВвод завершён. Завершение работы...");
+            return new Request(CommandType.EXIT, new String[0]);
+        }
+
         String line = scanner.nextLine().trim();
 
         if (line.isEmpty()) {
@@ -92,6 +98,9 @@ public class ConsoleReader {
 
             return new Request(type, args, human);
 
+        } catch (java.util.NoSuchElementException e) {
+            System.out.println("\nВвод прерван. Отмена команды.");
+            return null;
         } catch (NumberFormatException e) {
             System.err.println("Ошибка парсинга аргумента: " + e.getMessage());
             return null;
