@@ -1,8 +1,11 @@
 package client.console;
 
-import client.network.NetworkClient;
 import client.handler.ResponseHandler;
+import client.network.NetworkClient;
+import client.validation.DynamicValidationFactory;
+import client.validation.Validation;
 import common.commands.CommandType;
+import common.model.CommandDescriptor;
 import common.model.HumanBeing;
 import common.request.Request;
 import common.response.Response;
@@ -14,11 +17,14 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+// Выполняет скрипты из файлов, используя динамические метаданные от сервера
+
 public class ScriptExecutor {
 
     private final ConsoleReader consoleReader;
     private final NetworkClient networkClient;
     private final ResponseHandler responseHandler;
+    private final DynamicValidationFactory validationFactory;
 
     // Защита от рекурсивных вызовов
     private final Deque<String> scriptStack = new ArrayDeque<>();
@@ -28,6 +34,7 @@ public class ScriptExecutor {
         this.consoleReader = consoleReader;
         this.networkClient = networkClient;
         this.responseHandler = responseHandler;
+        this.validationFactory = new DynamicValidationFactory();
     }
 
     //Выполняет скрипт из файла
@@ -85,87 +92,93 @@ public class ScriptExecutor {
         }
     }
 
-    //Выполняет одну команду из скрипта
+    // Выполняет одну команду из скрипта с использованием динамических метаданных
     private void executeCommand(String line) {
         String[] tokens = line.split("\\s+", 2);
         String cmdName = tokens[0].toLowerCase();
 
-        try {
-            CommandType type = CommandType.valueOf(cmdName.toUpperCase());
+        //получаем дескриптор от сервера
+        CommandDescriptor desc = consoleReader.getCommandDescriptors().get(cmdName);
+        if (desc == null) {
+            System.err.println("Неизвестная команда в скрипте: " + cmdName);
+            return;
+        }
 
-            if (type.isServerOnly()) {
-                System.err.println("Команда '" + type + "' доступна только на сервере, пропускается");
-                return;
-            }
+        //проверки через дескриптор
+        if (desc.isServerOnly()) {
+            System.err.println("Команда '" + cmdName + "' доступна только на сервере, пропускается");
+            return;
+        }
 
-            if (type == CommandType.EXIT) {
-                System.out.println("Команда 'exit' в скрипте игнорируется");
-                return;
-            }
+        if (cmdName.equals("exit")) {
+            System.out.println("Команда 'exit' в скрипте игнорируется");
+            return;
+        }
 
-            //Проверка на execute_script (рекурсивный вызов)
-            if (type == CommandType.EXECUTE_SCRIPT) {
-                if (tokens.length > 1) {
-                    String scriptFile = tokens[1].trim();
-                    executeScript(scriptFile);
-                } else {
-                    System.err.println("execute_script требует имя файла");
-                }
-                return;
-            }
-
-            if (type.requiresData()) {
-                executeComplexCommand(type, tokens);
-                return;
-            }
-
-            String[] args;
+        if (cmdName.equals("execute_script")) {
             if (tokens.length > 1) {
-                args = new String[]{tokens[1]};
+                executeScript(tokens[1].trim());
             } else {
-                args = new String[0];
+                System.err.println("execute_script требует имя файла");
             }
-            Request request = new Request(type, args);
-            Response response = networkClient.sendRequest(request);
-            responseHandler.handle(response);
+            return;
+        }
 
+        //подготовка аргументов и динамическая валидация
+        String[] args = tokens.length > 1 ? new String[]{tokens[1]} : new String[0];
+
+        Validation<String[]> validator = validationFactory.createValidator(desc);
+        Validation.ValidationError error = validator.validate(args);
+        if (error != null) {
+            System.err.println("Ошибка валидации в скрипте [" + cmdName + "]: " + error.getMessage());
+            return;
+        }
+
+        //преобразование в CommandType (для совместимости с текущим Request)
+        CommandType type;
+        try {
+            type = CommandType.valueOf(cmdName.toUpperCase());
         } catch (IllegalArgumentException e) {
-            System.err.println("Неизвестная команда: " + cmdName);
-        } catch (IOException e) {
-            System.err.println("Ошибка связи с сервером: " + e.getMessage());
+            System.err.println("Команда '" + cmdName + "' отсутствует в клиентском enum. " +
+                    "Для работы через скрипт обновите клиент или добавьте команду в CommandType.");
+            return;
+        }
+
+        //выполнение
+        try {
+            if (desc.isRequiresData()) {
+                Long existingId = null;
+                if (type == CommandType.UPDATE && args.length > 0) {
+                    existingId = Long.parseLong(args[0].trim());
+                } else if (type == CommandType.INSERT_AT && args.length > 0) {
+                    int index = Integer.parseInt(args[0].trim());
+                    if (index < 0) {
+                        System.err.println("Индекс не может быть отрицательным");
+                        return;
+                    }
+                    args = new String[]{String.valueOf(index)};
+                }
+
+                System.out.println("  [Скрипт] Ввод данных элемента:");
+                HumanBeing human = consoleReader.getInputHelper().readHumanBeing(existingId);
+                sendAndHandle(new Request(type, args, human));
+            } else {
+                sendAndHandle(new Request(type, args));
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Ошибка парсинга аргумента в скрипте: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Ошибка выполнения: " + e.getMessage());
+            System.err.println("Ошибка выполнения команды '" + cmdName + "': " + e.getMessage());
         }
     }
 
-    //Выполняет сложную команду с интерактивным вводом данных
-    private void executeComplexCommand(CommandType type, String[] tokens) {
+    // Вспомогательный метод для отправки и обработки ответа
+    private void sendAndHandle(Request request) {
         try {
-            String[] args;
-            if (tokens.length > 1) {
-                args = new String[]{tokens[1]};
-            } else {
-                args = new String[0];
-            }
-
-            Long existingId = null;
-            if (type == CommandType.UPDATE && args.length > 0) {
-                existingId = Long.parseLong(args[0].trim());
-            }
-
-            InputHelper inputHelper = consoleReader.getInputHelper();
-            HumanBeing human = inputHelper.readHumanBeing(existingId);
-
-            Request request = new Request(type, args, human);
             Response response = networkClient.sendRequest(request);
             responseHandler.handle(response);
-
-        } catch (NumberFormatException e) {
-            System.err.println("Ошибка парсинга аргумента: " + e.getMessage());
         } catch (IOException e) {
-            System.err.println("Ошибка связи с сервером: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Ошибка выполнения: " + e.getMessage());
+            System.err.println("Ошибка связи с сервером при выполнении скрипта: " + e.getMessage());
         }
     }
 }

@@ -52,6 +52,12 @@ public class ClientApp {
         }
 
         System.out.println("\nПодключено к серверу");
+        System.out.println("Синхронизация команд...");
+
+        if (!consoleReader.fetchCommandMetadata(networkClient)) {
+            System.err.println("Не удалось получить метаданные от сервера. Динамическая валидация недоступна");
+        }
+
         System.out.println("Введите 'help' для списка команд");
         System.out.println("Введите 'exit' для завершения\n");
 

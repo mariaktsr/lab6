@@ -13,7 +13,7 @@ import java.util.Set;
 //Модуль приёма подключений клиентов
 //(использует неблокирующий режим через Selector и ServerSocketChannel)
 
-public class ConnectionAcceptor {
+public class  ConnectionAcceptor {
 
     private final ServerSocketChannel serverChannel;
     private final Selector selector;

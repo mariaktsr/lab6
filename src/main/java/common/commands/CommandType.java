@@ -28,6 +28,8 @@ public enum CommandType implements Serializable {
     INSERT_AT,
     UPDATE,
 
+    GET_COMMANDS_METADATA,
+
     //Команды, доступные ТОЛЬКО серверу
     SAVE_SERVER;
 

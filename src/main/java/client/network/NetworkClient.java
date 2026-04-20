@@ -58,45 +58,47 @@ public class NetworkClient {
         }
 
         try {
-            //Сериализация запроса
+            //сериализация и отправка запроса
             byte[] requestData = SerializationHelper.toBytes(request);
+            ByteBuffer requestBuffer = ByteBuffer.allocate(4 + requestData.length);
+            requestBuffer.putInt(requestData.length);
+            requestBuffer.put(requestData);
+            requestBuffer.flip();
 
-            //Отправка запроса
-            ByteBuffer requestBuffer = ByteBuffer.wrap(requestData);
             while (requestBuffer.hasRemaining()) {
                 channel.write(requestBuffer);
             }
             System.out.println("Запрос отправлен (" + requestData.length + " байт)");
 
-            //Чтение ответа
-            ByteBuffer responseBuffer = ByteBuffer.allocate(BUFFER_SIZE);
-            int bytesRead = channel.read(responseBuffer);
+            //чтение заголовка ответа (4 байта)
+            ByteBuffer headerBuffer = ByteBuffer.allocate(4);
+            int headerBytes = readFully(channel, headerBuffer);
+            if (headerBytes == -1) throw new IOException("Сервер закрыл соединение");
 
-            System.out.println("Получено байт: " + bytesRead);
+            headerBuffer.flip();
+            int responseLength = headerBuffer.getInt();
 
-            if (bytesRead == -1) {
-                throw new IOException("Сервер закрыл соединение");
+            if (responseLength <= 0 || responseLength > 10_000_000) {
+                throw new IOException("Некорректный размер ответа: " + responseLength);
             }
 
-            if (bytesRead == 0) {
-                System.out.println("Нет данных в ответе");
-                return null;
+            //динамический буфер под ответ
+            ByteBuffer responseBuffer = ByteBuffer.allocate(responseLength);
+            int dataBytes = readFully(channel, responseBuffer);
+            if (dataBytes == -1 || dataBytes < responseLength) {
+                throw new IOException("Неполный ответ от сервера");
             }
-
             responseBuffer.flip();
+
             byte[] responseData = new byte[responseBuffer.remaining()];
             responseBuffer.get(responseData);
 
-            System.out.println("Размер ответа: " + responseData.length + " байт");
-
-            //Десериализация ответа
+            //десериализация
             try {
                 Response response = SerializationHelper.fromBytes(responseData, Response.class);
                 System.out.println("Ответ получен: " + (response.isSuccess() ? "OK" : "ERROR"));
                 return response;
             } catch (ClassNotFoundException e) {
-                System.err.println("Ошибка десериализации: " + e.getMessage());
-                e.printStackTrace();
                 throw new IOException("Ошибка десериализации ответа", e);
             }
 
@@ -104,6 +106,23 @@ public class NetworkClient {
             connected = false;
             throw new IOException("Ошибка связи с сервером: " + e.getMessage(), e);
         }
+    }
+
+    //гарантированно читает данные из сети, пока буфер не заполнится
+    private int readFully(SocketChannel channel, ByteBuffer buffer) throws IOException {
+        int total = 0;
+        while (buffer.hasRemaining()) {
+            int read = channel.read(buffer);
+            if (read == -1) {
+                if (total == 0) {
+                    return -1;
+                } else {
+                    return total;
+                }
+            }
+            total += read;
+        }
+        return total;
     }
 
     //Проверяет, подключён ли клиент

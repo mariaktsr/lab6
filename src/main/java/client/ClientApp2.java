@@ -51,6 +51,10 @@ public class ClientApp2 {
             System.exit(1);
         }
 
+        if (!consoleReader.fetchCommandMetadata(networkClient)) {
+            System.err.println("Не удалось получить метаданные от сервера. Динамическая валидация недоступна");
+        }
+
         System.out.println("\nПодключено к серверу");
         System.out.println("Введите 'help' для списка команд");
         System.out.println("Введите 'exit' для завершения\n");

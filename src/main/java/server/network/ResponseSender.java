@@ -7,16 +7,21 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-//Модуль отправки ответов клиентам
-//Сериализует объекты Response и отправляет в сетевой канал
-
 public class ResponseSender {
 
-    public void send(SocketChannel channel, Response response) throws IOException {
-        byte[] data = SerializationHelper.toBytes(response);
-        ByteBuffer buffer = ByteBuffer.wrap(data);
+    private static final int HEADER_SIZE = 4;
 
-        //Отправляем данные
+    public void send(SocketChannel channel, Response response) throws IOException {
+
+        byte[] data = SerializationHelper.toBytes(response);
+
+        //динамический буфер: размер = заголовок + данные
+        ByteBuffer buffer = ByteBuffer.allocate(HEADER_SIZE + data.length);
+        buffer.putInt(data.length); //записываем длину
+        buffer.put(data);           //записываем данные
+        buffer.flip();
+
+        //отправляем полностью
         while (buffer.hasRemaining()) {
             channel.write(buffer);
         }

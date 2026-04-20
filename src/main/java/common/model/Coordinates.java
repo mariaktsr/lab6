@@ -7,8 +7,6 @@ import java.util.Objects;
 
 public class Coordinates implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-
     private double x;
     private Long y; //Значение поля должно быть больше -228, Поле не может быть null
 
